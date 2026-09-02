@@ -1,7 +1,155 @@
 {
   "format_version": "B1-CLOSURE-TABLE-0.4",
-  "law": "Closures are TIGHTEN-ONLY: evaluated after the frozen decision table, they may move VALID to a defect class and may never weaken or reorder a frozen classification. Each closure states the caller-supplied consistency it enforces. Operators are the frozen predicate vocabulary plus PROJECTION_NE and DERIVED_DIFF_NE (defined in rr_api.py).",
+  "law": "Closures are TIGHTEN-ONLY: evaluated after the frozen decision table, they may move VALID to a defect class and may never weaken or reorder a frozen classification. Each closure states the caller-supplied consistency it enforces. Operators are the frozen predicate vocabulary plus PROJECTION_NE, DERIVED_DIFF_NE, ROW_FIELD_NE_ON_FLAG and EDGE_ENDPOINTS_NOT_SUBSET (defined in rr_api.py). A closure that references a required fact field by value is what makes that field's register status 'semantic_closure'; one that references it only for presence makes it 'presence_only_closure'. lint_contract.py L4 checks that correspondence in both directions, so a closure cannot be added or removed without the register moving with it.",
   "closures_by_obligation": {
+    "OBL-08": [
+      {
+        "closure_id": "OBL-08-C1-assumption-id-set-integrity",
+        "statement": "assumption_ids is a set of distinct assumption identifiers; a repeated identifier presents one assumption as two and makes the declared assumption base uncountable.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "op": "NOT_UNIQUE",
+          "path": "/facts/assumption_ids"
+        }
+      }
+    ],
+    "OBL-12": [
+      {
+        "closure_id": "OBL-12-C1-contextual-parameters-stated",
+        "statement": "subject_id, information_type, context_id and purpose_id are the contextual parameters the transmission is assessed against; a null parameter means the caller never stated it, so the assessment ran over an unstated context. The frozen table already treats a null transmission_principle as a defect; these four carry the same weight.",
+        "tightens_to": "OMISSION_OR_INCOMPLETE",
+        "predicate": {
+          "op": "ANY_ABSENT",
+          "paths": [
+            "/facts/subject_id",
+            "/facts/information_type",
+            "/facts/context_id",
+            "/facts/purpose_id"
+          ]
+        }
+      }
+    ],
+    "OBL-14": [
+      {
+        "closure_id": "OBL-14-C1-edge-endpoints-declared",
+        "statement": "every parent_edges and dependency_edges endpoint must appear in node_ids; a graph whose edges reference undeclared nodes means the frozen self-loop and acyclicity checks ran over a graph larger than the one the caller declared.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "op": "EDGE_ENDPOINTS_NOT_SUBSET",
+          "edge_paths": [
+            "/facts/parent_edges",
+            "/facts/dependency_edges"
+          ],
+          "from": "from",
+          "to": "to",
+          "nodes_path": "/facts/node_ids"
+        }
+      },
+      {
+        "closure_id": "OBL-14-C2-node-id-set-integrity",
+        "statement": "node_ids is a set of distinct node identifiers; a repeated identifier makes the declared node set disagree with its own count.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "op": "NOT_UNIQUE",
+          "path": "/facts/node_ids"
+        }
+      }
+    ],
+    "OBL-16": [
+      {
+        "closure_id": "OBL-16-C1-record-sources-pairwise-distinct",
+        "statement": "support, provenance and authority records must be distinct records where non-null; reusing one record as two of the three presents a single basis as two independent ones. OBL-04 classifies exactly this relation over the same three field names.",
+        "tightens_to": "OMISSION_OR_INCOMPLETE",
+        "predicate": {
+          "op": "NOT_PAIRWISE_DISTINCT_NON_NULL",
+          "paths": [
+            "/facts/provenance_record_sha256",
+            "/facts/support_record_sha256",
+            "/facts/authority_record_sha256"
+          ]
+        }
+      },
+      {
+        "closure_id": "OBL-16-C2-declared-missing-evidence",
+        "statement": "missing_evidence_ids is the caller's own record of evidence it does not hold; a handoff carried out while that list is non-empty is incomplete on the caller's own account.",
+        "tightens_to": "OMISSION_OR_INCOMPLETE",
+        "predicate": {
+          "not": {
+            "op": "EMPTY",
+            "path": "/facts/missing_evidence_ids"
+          }
+        }
+      },
+      {
+        "closure_id": "OBL-16-C3-id-set-integrity",
+        "statement": "obligation_ids and assumption_ids are sets of distinct identifiers; a repeated identifier inflates the declared obligation or assumption base without adding one.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "any": [
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/obligation_ids"
+            },
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/assumption_ids"
+            }
+          ]
+        }
+      }
+    ],
+    "OBL-22": [
+      {
+        "closure_id": "OBL-22-C1-binding-not-self-asserted",
+        "statement": "one object cannot be both an authenticated binding and self-asserted trust: an equal SHA-256 is equal bytes, so an intersection places one evidence object in two mutually exclusive trust classes. Not treating self-asserted trust as a binding is this obligation's subject.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "INTERSECTS",
+          "left": "/facts/binding_sha256s",
+          "right": "/facts/self_asserted_trust_sha256s"
+        }
+      },
+      {
+        "closure_id": "OBL-22-C2-evidence-digest-set-integrity",
+        "statement": "each evidence digest list is a set of distinct objects; a repeated digest counts one byte-object twice and inflates the apparent evidence base.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "any": [
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/retrieved_content_sha256s"
+            },
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/tool_output_sha256s"
+            },
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/metadata_sha256s"
+            },
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/binding_sha256s"
+            },
+            {
+              "op": "NOT_UNIQUE",
+              "path": "/facts/self_asserted_trust_sha256s"
+            }
+          ]
+        }
+      }
+    ],
+    "OBL-24": [
+      {
+        "closure_id": "OBL-24-C1-covered-modality-set-integrity",
+        "statement": "covered_modality_ids is a set of distinct modality identifiers; a repeated identifier inflates declared coverage without covering another modality.",
+        "tightens_to": "MALFORMED_OR_BOUNDARY",
+        "predicate": {
+          "op": "NOT_UNIQUE",
+          "path": "/facts/covered_modality_ids"
+        }
+      }
+    ],
     "OBL-30": [
       {
         "closure_id": "OBL-30-C1-verdict-projection-agreement-compatible",
@@ -41,6 +189,81 @@
             "/facts/excluded_record_ids"
           ],
           "equals_path": "/facts/undispositioned_compatible_record_ids"
+        }
+      },
+      {
+        "closure_id": "OBL-30-C4-compatible-episode-agreement",
+        "statement": "a record the caller declares compatible must carry the declared intent episode; the caller's own candidate_pool row saying otherwise contradicts the verdict it supplied.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "ROW_FIELD_NE_ON_FLAG",
+          "rows_path": "/facts/candidate_pool",
+          "key": "record_id",
+          "row_field": "episode_id",
+          "flag_rows_path": "/facts/compatibility_verdicts",
+          "flag": "compatible",
+          "flag_value": true,
+          "value_path": "/facts/intent_episode_id"
+        }
+      },
+      {
+        "closure_id": "OBL-30-C5-compatible-purpose-agreement",
+        "statement": "a record the caller declares compatible must carry the declared intent purpose.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "ROW_FIELD_NE_ON_FLAG",
+          "rows_path": "/facts/candidate_pool",
+          "key": "record_id",
+          "row_field": "purpose_id",
+          "flag_rows_path": "/facts/compatibility_verdicts",
+          "flag": "compatible",
+          "flag_value": true,
+          "value_path": "/facts/intent_purpose_id"
+        }
+      },
+      {
+        "closure_id": "OBL-30-C6-compatible-scope-agreement",
+        "statement": "a record the caller declares compatible must carry the declared intent scope.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "ROW_FIELD_NE_ON_FLAG",
+          "rows_path": "/facts/candidate_pool",
+          "key": "record_id",
+          "row_field": "scope_ref",
+          "flag_rows_path": "/facts/compatibility_verdicts",
+          "flag": "compatible",
+          "flag_value": true,
+          "value_path": "/facts/intent_scope_ref"
+        }
+      },
+      {
+        "closure_id": "OBL-30-C7-compatible-action-class-agreement",
+        "statement": "a record the caller declares compatible must carry the declared intent action class.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "ROW_FIELD_NE_ON_FLAG",
+          "rows_path": "/facts/candidate_pool",
+          "key": "record_id",
+          "row_field": "action_class",
+          "flag_rows_path": "/facts/compatibility_verdicts",
+          "flag": "compatible",
+          "flag_value": true,
+          "value_path": "/facts/intent_action_class"
+        }
+      },
+      {
+        "closure_id": "OBL-30-C8-compatible-version-agreement",
+        "statement": "a record the caller declares compatible must carry the declared intent version digest.",
+        "tightens_to": "BINDING_OR_CONFLICT",
+        "predicate": {
+          "op": "ROW_FIELD_NE_ON_FLAG",
+          "rows_path": "/facts/candidate_pool",
+          "key": "record_id",
+          "row_field": "version_sha256",
+          "flag_rows_path": "/facts/compatibility_verdicts",
+          "flag": "compatible",
+          "flag_value": true,
+          "value_path": "/facts/intent_version_sha256"
         }
       }
     ]

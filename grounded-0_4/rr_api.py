@@ -121,14 +121,14 @@ def _load_verified_module(
 
 _CLOSURE_POLICY_RAW = _read_pinned_bytes(
     _CLOSURE_POLICY,
-    2329,
-    "EBA198726DE960E9F59ACE5A7E1BDB701BFBA5B1BD09BC59FF4540F2B14E8F9C",
+    11733,
+    "8FDDCD695989A628C5075A34F45F71F4D286037F924D35F36EE7741636287704",
     "grounded closure policy",
 )
 _AUTHORITY_REGISTER_RAW = _read_pinned_bytes(
     _AUTHORITY_REGISTER,
-    35399,
-    "C3414FC751C3B5ECA43A4932C694641D801A21F2CF53C42BE3A8C87C234CF499",
+    38577,
+    "5700FC25BD7875DE66A44648983092182ADC2168529DD4C9ADF5334A625A3B74",
     "grounded authority register",
 )
 _PRIMARY_CONTRACT_RAW = _read_pinned_bytes(
@@ -147,8 +147,8 @@ _SUPPLEMENTAL_CONTRACT_RAW = _read_pinned_bytes(
 authority_surface = _load_verified_module(
     "_receiver_reliance_authority_surface",
     _HERE / "authority_surface.py",
-    8634,
-    "62B689D964CA906C2E3F8376047E0DDD14C78364432B1A7EA8499C8FF7E8C5DD",
+    9324,
+    "F40348C7DC11B8072BD7202A31359DA38D820DA8F8D7E5C26298100BD810B945",
 )
 authority_for_operation = authority_surface.authority_for_operation
 b1 = _load_verified_module(
@@ -403,6 +403,38 @@ def _eval_closure_atomic(node: dict[str, Any], doc: Any) -> bool:
         for path in node["subtract_paths"]:
             derived -= _jcs_set(get(path))
         return derived != _jcs_set(get(node["equals_path"]))
+    if op == "ROW_FIELD_NE_ON_FLAG":
+        # {rows_path, key, row_field, flag_rows_path, flag, flag_value,
+        # value_path}: true when a row selected by the caller's own flag
+        # carries row[row_field] different from the value at value_path —
+        # i.e. a row the caller vouched for contradicts the declared fact it
+        # was vouched against. Only the flagged rows are compared, so this
+        # tightens a caller's positive claim and never converts an unflagged
+        # row into one.
+        flagged = {
+            b1.jcs_bytes(row[node["key"]])
+            for row in get(node["flag_rows_path"])
+            if b1._strict_equal(row[node["flag"]], node["flag_value"])
+        }
+        target = get(node["value_path"])
+        return any(
+            not b1._strict_equal(row[node["row_field"]], target)
+            for row in get(node["rows_path"])
+            if b1.jcs_bytes(row[node["key"]]) in flagged
+        )
+    if op == "EDGE_ENDPOINTS_NOT_SUBSET":
+        # {edge_paths, from, to, nodes_path}: true when any edge endpoint is
+        # absent from the declared node set — the graph the caller submitted
+        # is larger than the graph it declared, so every structural predicate
+        # over those edges ran on undeclared vertices.
+        nodes = _jcs_set(get(node["nodes_path"]))
+        for path in node["edge_paths"]:
+            for edge in get(path):
+                if b1.jcs_bytes(edge[node["from"]]) not in nodes:
+                    return True
+                if b1.jcs_bytes(edge[node["to"]]) not in nodes:
+                    return True
+        return False
     # Fall through to the frozen evaluator for every accepted operator, so
     # closures may reuse the frozen vocabulary.
     return b1._eval_atomic(node, doc)

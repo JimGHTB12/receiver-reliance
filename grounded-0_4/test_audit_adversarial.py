@@ -77,6 +77,15 @@ def fired_ids(findings: Iterable[dict[str, Any]]) -> set[str]:
     return {row["closure_id"] for row in findings if row.get("fired")}
 
 
+INTENT_TUPLE = {
+    "episode_id": "EPISODE_001",
+    "purpose_id": "PURPOSE_A",
+    "scope_ref": "SCOPE_A",
+    "action_class": "ACTION_CLASS_A",
+    "version_sha256": "C" * 63 + "1",
+}
+
+
 def closure_facts(
     verdicts: list[dict[str, Any]],
     compatible: list[str],
@@ -85,8 +94,31 @@ def closure_facts(
     excluded: list[str],
     undispositioned: list[str],
 ) -> dict[str, Any]:
+    """Build a synthetic OBL-30 fact profile the whole closure set can read.
+
+    The candidate pool is derived from the verdict rows and every row carries
+    the declared intent tuple, so the intent-agreement closures are quiet by
+    construction and these cases keep testing exactly what they were written
+    to test: the projection and derivation closures over the id sets. A pool
+    row is emitted per verdict row rather than per distinct id, so the
+    duplicate case still presents duplicates to both.
+    """
     return {
         "facts": {
+            "candidate_pool": [
+                {
+                    "record_id": verdict["record_id"],
+                    "similarity_rank": index + 1,
+                    **INTENT_TUPLE,
+                }
+                for index, verdict in enumerate(verdicts)
+            ],
+            "pool_record_ids": [verdict["record_id"] for verdict in verdicts],
+            "intent_episode_id": INTENT_TUPLE["episode_id"],
+            "intent_purpose_id": INTENT_TUPLE["purpose_id"],
+            "intent_scope_ref": INTENT_TUPLE["scope_ref"],
+            "intent_action_class": INTENT_TUPLE["action_class"],
+            "intent_version_sha256": INTENT_TUPLE["version_sha256"],
             "compatibility_verdicts": verdicts,
             "compatible_record_ids": compatible,
             "incompatible_record_ids": incompatible,
@@ -367,6 +399,75 @@ for base in ab_sequences:
                         f"subtract_b={subtract_b!r} equals={equals!r}"
                     ),
                 )
+
+row_flag_node = {
+    "op": "ROW_FIELD_NE_ON_FLAG",
+    "rows_path": "/rows",
+    "key": "id",
+    "row_field": "component",
+    "flag_rows_path": "/verdicts",
+    "flag": "flag",
+    "flag_value": True,
+    "value_path": "/declared",
+}
+# The oracle is written from the operator's statement, not from its code: only
+# rows whose id the caller flagged are compared, and a flag that is not the
+# boolean True never selects a row (matching the frozen strict-equality law,
+# under which 1 is not True).
+component_options = tuple(itertools.product(("R1", "R2"), ("X", "Y")))
+verdict_options = tuple(itertools.product(("R1", "R2"), (True, False, 1, None)))
+for row_sequence in bounded_sequences(component_options, 2):
+    rows = [{"id": id_value, "component": value} for id_value, value in row_sequence]
+    for verdict_sequence in bounded_sequences(verdict_options, 2):
+        verdicts = [{"id": id_value, "flag": flag} for id_value, flag in verdict_sequence]
+        flagged = {
+            id_value
+            for id_value, flag in verdict_sequence
+            if type(flag) is bool and flag is True
+        }
+        for declared in ("X", "Y", "Z"):
+            expected = any(
+                value != declared
+                for id_value, value in row_sequence
+                if id_value in flagged
+            )
+            actual = rr_api._eval_closure_atomic(
+                row_flag_node,
+                {"rows": rows, "verdicts": verdicts, "declared": declared},
+            )
+            check(
+                "truth-table:ROW_FIELD_NE_ON_FLAG",
+                actual is expected,
+                f"rows={row_sequence!r} verdicts={verdict_sequence!r} declared={declared!r}",
+            )
+
+edge_node = {
+    "op": "EDGE_ENDPOINTS_NOT_SUBSET",
+    "edge_paths": ["/edges_a", "/edges_b"],
+    "from": "from",
+    "to": "to",
+    "nodes_path": "/nodes",
+}
+edge_options = tuple(itertools.product(("N1", "N2", "N3"), ("N1", "N2", "N3")))
+node_sequences = tuple(bounded_sequences(("N1", "N2"), 2))
+for edges_a in bounded_sequences(edge_options, 1):
+    for edges_b in bounded_sequences(edge_options, 1):
+        endpoints = {value for edge in edges_a + edges_b for value in edge}
+        for nodes in node_sequences:
+            expected = not endpoints <= set(nodes)
+            actual = rr_api._eval_closure_atomic(
+                edge_node,
+                {
+                    "edges_a": [{"from": f, "to": t} for f, t in edges_a],
+                    "edges_b": [{"from": f, "to": t} for f, t in edges_b],
+                    "nodes": list(nodes),
+                },
+            )
+            check(
+                "truth-table:EDGE_ENDPOINTS_NOT_SUBSET",
+                actual is expected,
+                f"edges_a={edges_a!r} edges_b={edges_b!r} nodes={nodes!r}",
+            )
 
 
 # 6. Record references: nesting, exact markers, Unicode, sort/dedup, cap=64.

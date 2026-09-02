@@ -13,6 +13,14 @@ Checks, in order:
   4. CLOSURE - the review's OBL-30 probes (inverted verdicts; stale selected
               set) classify as defects on the audited surface, while the
               clean fixture stays VALID with zero closure findings.
+  5. GOVERNANCE - audited decisions identify the governing policy bytes, and
+              an errored closure evaluator fails closed rather than certifying.
+  6. MATURATION - every closure that carries a formerly inert field's
+              classification authority fires on the defect it names and
+              tightens to the class it declares, with the frozen table still
+              sealing VALID underneath; a record the caller declared
+              incompatible may drift from the intent tuple without a hold;
+              and a closure shipped without a positive control fails here.
 
 Exit 0 with 'failures=0' on success.
 """
@@ -255,6 +263,195 @@ check(
     "governance:reference-exact-64-not-flagged",
     len(_refs_capped) == 64 and _refs_flag is False,
     f"{len(_refs_capped)} {_refs_flag}",
+)
+
+# 6. MATURATION - every closure that gives a formerly inert field its
+#    classification authority names a defect, fires on it, and tightens to the
+#    class it declares, while the clean fixture it was derived from stays
+#    VALID. The sealed class is asserted VALID in each case, so what is being
+#    proved is that the CLOSURE did the work and not the frozen table.
+VALID_ENTRIES: dict[str, dict] = {}
+for _rel in PACKS:
+    for _entry in load_pack(_rel)["entries"]:
+        _ob = _entry["semantic_request"]["obligation_id"]
+        if "-IO-" in _entry["entry_id"] and _ob not in VALID_ENTRIES:
+            VALID_ENTRIES[_ob] = _entry
+
+
+def clean_request(obligation: str) -> dict:
+    entry = VALID_ENTRIES[obligation]
+    return json.loads(
+        base64.b64decode(entry["semantic_request_jcs_lf_base64"]).decode("utf-8")
+    )
+
+
+def _set(**values):
+    def mutate(facts):
+        facts.update(values)
+
+    return mutate
+
+
+def _pool_field(record_id: str, field: str, value):
+    def mutate(facts):
+        for row in facts["candidate_pool"]:
+            if row["record_id"] == record_id:
+                row[field] = value
+
+    return mutate
+
+
+def _alias_record(facts):
+    facts["support_record_sha256"] = facts["provenance_record_sha256"]
+
+
+MATURATION_CASES = [
+    # (obligation, closure id, defect the caller commits, expected class)
+    ("OBL-08", "OBL-08-C1-assumption-id-set-integrity",
+     _set(assumption_ids=["ASSUMPTION_A", "ASSUMPTION_A"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-12", "OBL-12-C1-contextual-parameters-stated",
+     _set(subject_id=None), "OMISSION_OR_INCOMPLETE"),
+    ("OBL-12", "OBL-12-C1-contextual-parameters-stated",
+     _set(information_type=None), "OMISSION_OR_INCOMPLETE"),
+    ("OBL-12", "OBL-12-C1-contextual-parameters-stated",
+     _set(context_id=None), "OMISSION_OR_INCOMPLETE"),
+    ("OBL-12", "OBL-12-C1-contextual-parameters-stated",
+     _set(purpose_id=None), "OMISSION_OR_INCOMPLETE"),
+    ("OBL-14", "OBL-14-C1-edge-endpoints-declared",
+     _set(dependency_edges=[{"from": "NODE_A", "to": "NODE_UNDECLARED"}]),
+     "MALFORMED_OR_BOUNDARY"),
+    ("OBL-14", "OBL-14-C1-edge-endpoints-declared",
+     _set(parent_edges=[{"from": "NODE_UNDECLARED", "to": "NODE_B"}]),
+     "MALFORMED_OR_BOUNDARY"),
+    ("OBL-14", "OBL-14-C2-node-id-set-integrity",
+     _set(node_ids=["NODE_A", "NODE_A", "NODE_B"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-16", "OBL-16-C1-record-sources-pairwise-distinct",
+     _alias_record, "OMISSION_OR_INCOMPLETE"),
+    ("OBL-16", "OBL-16-C2-declared-missing-evidence",
+     _set(missing_evidence_ids=["EVIDENCE_WE_DO_NOT_HOLD"]), "OMISSION_OR_INCOMPLETE"),
+    ("OBL-16", "OBL-16-C3-id-set-integrity",
+     _set(obligation_ids=["OBL-A", "OBL-A"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-16", "OBL-16-C3-id-set-integrity",
+     _set(assumption_ids=["ASSUMPTION_A", "ASSUMPTION_A"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-22", "OBL-22-C1-binding-not-self-asserted",
+     _set(binding_sha256s=["B" * 63 + "8"], self_asserted_trust_sha256s=["B" * 63 + "8"]),
+     "BINDING_OR_CONFLICT"),
+    ("OBL-22", "OBL-22-C2-evidence-digest-set-integrity",
+     _set(tool_output_sha256s=["F" * 63 + "1", "F" * 63 + "1"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-24", "OBL-24-C1-covered-modality-set-integrity",
+     _set(covered_modality_ids=["MODALITY_A", "MODALITY_A"]), "MALFORMED_OR_BOUNDARY"),
+    ("OBL-30", "OBL-30-C4-compatible-episode-agreement",
+     _pool_field("REC_A", "episode_id", "EPISODE_OTHER"), "BINDING_OR_CONFLICT"),
+    ("OBL-30", "OBL-30-C5-compatible-purpose-agreement",
+     _pool_field("REC_A", "purpose_id", "PURPOSE_OTHER"), "BINDING_OR_CONFLICT"),
+    ("OBL-30", "OBL-30-C6-compatible-scope-agreement",
+     _pool_field("REC_A", "scope_ref", "SCOPE_OTHER"), "BINDING_OR_CONFLICT"),
+    ("OBL-30", "OBL-30-C7-compatible-action-class-agreement",
+     _pool_field("REC_A", "action_class", "ACTION_CLASS_OTHER"), "BINDING_OR_CONFLICT"),
+    ("OBL-30", "OBL-30-C8-compatible-version-agreement",
+     _pool_field("REC_A", "version_sha256", "A" * 63 + "7"), "BINDING_OR_CONFLICT"),
+]
+
+exercised_closures: set[str] = {
+    finding["closure_id"]
+    for audited in (a_inv, a_stale)
+    for finding in audited["audit"]["closure_findings"]
+    if finding.get("fired")
+}
+
+for obligation, closure_id, mutate, expected_class in MATURATION_CASES:
+    request = clean_request(obligation)
+    baseline = rr_api.decide_audited(request)
+    check(
+        f"maturation:{closure_id}:baseline-valid",
+        baseline["audited_behavior_class"] == "VALID",
+        f"{obligation} {baseline['audited_behavior_class']}",
+    )
+    mutate(request["decision_input"]["facts"])
+    audited = rr_api.decide_audited(request)
+    sealed_class = (
+        (audited["sealed_response"].get("output") or {}).get("result_object") or {}
+    ).get("behavior_class")
+    fired = {
+        finding["closure_id"]
+        for finding in audited["audit"]["closure_findings"]
+        if finding.get("fired")
+    }
+    exercised_closures |= fired
+    check(
+        f"maturation:{closure_id}:frozen-table-still-seals-valid",
+        sealed_class == "VALID",
+        str(sealed_class),
+    )
+    check(f"maturation:{closure_id}:fires", closure_id in fired, str(sorted(fired)))
+    check(
+        f"maturation:{closure_id}:tightens-to-{expected_class}",
+        audited["audited_behavior_class"] == expected_class,
+        audited["audited_behavior_class"],
+    )
+    check(
+        f"maturation:{closure_id}:no-evaluator-error",
+        not [f for f in audited["audit"]["closure_findings"] if "evaluator_error" in f],
+        str(audited["audit"]["closure_findings"]),
+    )
+
+# Negative control: the intent-agreement closures test only the records the
+# caller vouched for. A record the caller declared INCOMPATIBLE may differ
+# from the declared intent in any way it likes — that is what incompatible
+# means, and holding on it would be the false hold this design must not make.
+drifted = clean_request("OBL-30")
+_pool_field("REC_LURE", "episode_id", "EPISODE_ANYTHING")(
+    drifted["decision_input"]["facts"]
+)
+a_drifted = rr_api.decide_audited(drifted)
+check(
+    "maturation:incompatible-record-may-drift",
+    a_drifted["audited_behavior_class"] == "VALID",
+    a_drifted["audited_behavior_class"],
+)
+
+# A closure with no positive control is an unscored check. Every row of the
+# declared closure table must have fired somewhere in this suite.
+declared_closures = {
+    row["closure_id"] for rows in rr_api._CLOSURES.values() for row in rows
+}
+check(
+    "maturation:every-declared-closure-has-a-positive-control",
+    declared_closures <= exercised_closures,
+    str(sorted(declared_closures - exercised_closures)),
+)
+
+# Every field the register says a closure checks must belong to an obligation
+# the runtime closure table actually carries. lint_contract L4 proves the
+# stronger per-field correspondence; this ties the shipped register to the
+# closures this process loaded.
+_register = json.load(open(HERE / "authority_register_0_4.json", encoding="utf-8"))
+_closure_backed = {
+    (operation["obligation_id"], field["field"])
+    for operation in _register["operations"]
+    for field in operation["fields"]
+    if field["status"].endswith("_closure")
+}
+check(
+    "maturation:register-closure-statuses-have-runtime-closures",
+    all(obligation in rr_api._CLOSURES for obligation, _field in _closure_backed),
+    str(sorted({ob for ob, _f in _closure_backed if ob not in rr_api._CLOSURES})),
+)
+check(
+    "maturation:no-field-left-inert-without-a-recorded-boundary",
+    all(
+        "0.5" in field["rationale"] or not field["status"].startswith("inert")
+        for operation in _register["operations"]
+        for field in operation["fields"]
+    ),
+    str(
+        [
+            f"{operation['obligation_id']}.{field['field']}"
+            for operation in _register["operations"]
+            for field in operation["fields"]
+            if field["status"].startswith("inert") and "0.5" not in field["rationale"]
+        ]
+    ),
 )
 
 print(f"grounded-0.4 regression: checks={checks} failures={failures}")

@@ -27,17 +27,17 @@ REGISTER_PATH = HERE / "authority_register_0_4.json"
 TABLE_PATH = HERE / "AUTHORITY_TABLE.md"
 GENERATOR_PATH = HERE / "generate_authority_table.py"
 LINTER_PATH = HERE / "lint_contract.py"
-NON_SEMANTIC_STATUSES = (
-    "presence_only",
-    "inert_disclosed",
-    "inert_registered_debt",
-)
 MAX_FAILURE_DETAILS = 20
 
 sys.path.insert(0, str(HERE))
 import authority_surface  # noqa: E402
 import generate_authority_table as generator  # noqa: E402
 import lint_contract as contract_lint  # noqa: E402
+
+# Taken from the generator rather than transcribed: a second copy of the
+# column list drifts the first time a status is added, and the drift shows up
+# as a parse failure in this test instead of as the register error it is.
+NON_SEMANTIC_STATUSES = generator.NON_SEMANTIC_STATUSES
 import rr_api  # noqa: E402
 
 
@@ -94,7 +94,7 @@ def parse_table(raw: bytes) -> tuple[str, dict[str, dict[str, set[str]]]]:
         if not line.startswith("| `OBL-"):
             continue
         cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
-        if len(cells) != 5:
+        if len(cells) != 2 + len(NON_SEMANTIC_STATUSES):
             raise AssertionError(f"table row has {len(cells)} cells: {line!r}")
         obligation_values = parse_code_cell(cells[0])
         handle_values = parse_code_cell(cells[1])
@@ -105,9 +105,10 @@ def parse_table(raw: bytes) -> tuple[str, dict[str, dict[str, set[str]]]]:
             raise AssertionError(f"duplicate table row: {obligation_id}")
         parsed[obligation_id] = {
             "operation_handle": {handle_values[0]},
-            "presence_only": set(parse_code_cell(cells[2])),
-            "inert_disclosed": set(parse_code_cell(cells[3])),
-            "inert_registered_debt": set(parse_code_cell(cells[4])),
+            **{
+                status: set(parse_code_cell(cell))
+                for status, cell in zip(NON_SEMANTIC_STATUSES, cells[2:])
+            },
         }
     return digest_match.group(1), parsed
 

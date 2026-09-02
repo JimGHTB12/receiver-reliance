@@ -195,6 +195,76 @@ def mutate_closure_to_valid(staged: pathlib.Path) -> str:
     )
 
 
+def _first_closure_status_field(register: dict[str, Any], status: str) -> tuple[dict, dict]:
+    for operation in register["operations"]:
+        for field in operation["fields"]:
+            if field["status"] == status:
+                return operation, field
+    raise AssertionError(f"baseline register has no {status} field to falsify")
+
+
+def mutate_closure_status_without_closure(staged: pathlib.Path) -> str:
+    """Claim closure authority for a field no closure predicate reads."""
+    path = staged / REGISTER
+    register = read_json(path)
+    operation = next(
+        row for row in register["operations"] if row["obligation_id"] == "OBL-10"
+    )
+    field = next(row for row in operation["fields"] if row["field"] == "principal_id")
+    field["status"] = "semantic_closure"
+    write_json(path, register)
+    return (
+        "L4: OBL-10.principal_id registered semantic_closure but no value-comparing "
+        "closure predicate references it"
+    )
+
+
+def mutate_delete_closure_the_register_relies_on(staged: pathlib.Path) -> str:
+    """Withdraw a closure while the register still claims its authority."""
+    path = staged / CLOSURES
+    closures = read_json(path)
+    register = read_json(staged / REGISTER)
+    operation, field = _first_closure_status_field(register, "semantic_closure")
+    obligation = operation["obligation_id"]
+    if obligation not in closures["closures_by_obligation"]:
+        raise AssertionError(f"{obligation} declares no closures to withdraw")
+    del closures["closures_by_obligation"][obligation]
+    write_json(path, closures)
+    return (
+        f"L4: {obligation}.{field['field']} registered semantic_closure but "
+        f"{obligation} declares no closures"
+    )
+
+
+def mutate_matured_field_back_to_inert(staged: pathlib.Path) -> str:
+    """Re-hide a checked field under an inert status."""
+    path = staged / REGISTER
+    register = read_json(path)
+    operation, field = _first_closure_status_field(register, "semantic_closure")
+    field["status"] = "inert_registered_debt"
+    write_json(path, register)
+    return (
+        f"L4: {operation['obligation_id']}.{field['field']} registered "
+        "inert_registered_debt but a closure references it (stale register)"
+    )
+
+
+def mutate_closure_pointer_under_unknown_key(staged: pathlib.Path) -> str:
+    """Hide a closure's pointer behind a key the reference scan does not read."""
+    path = staged / CLOSURES
+    closures = read_json(path)
+    closure = closures["closures_by_obligation"]["OBL-24"][0]
+    closure["predicate"] = {
+        "op": "NOT_UNIQUE",
+        "undeclared_pointer_key": "/facts/covered_modality_ids",
+    }
+    write_json(path, closures)
+    return (
+        f"L4: closure {closure['closure_id']} carries pointer "
+        "'/facts/covered_modality_ids' under a key absent from CLOSURE_PATH_KEYS"
+    )
+
+
 CASES: tuple[tuple[str, Mutation | None], ...] = (
     ("baseline-accepted", None),
     ("deleted-register-entry-rejected", mutate_deleted_register_entry),
@@ -205,6 +275,10 @@ CASES: tuple[tuple[str, Mutation | None], ...] = (
     ("stale-extra-field-rejected", mutate_stale_extra_field),
     ("duplicate-wire-format-rejected", mutate_duplicate_wire_format),
     ("closure-to-valid-rejected", mutate_closure_to_valid),
+    ("closure-status-without-closure-rejected", mutate_closure_status_without_closure),
+    ("withdrawn-closure-rejected", mutate_delete_closure_the_register_relies_on),
+    ("matured-field-back-to-inert-rejected", mutate_matured_field_back_to_inert),
+    ("closure-pointer-hidden-rejected", mutate_closure_pointer_under_unknown_key),
 )
 
 

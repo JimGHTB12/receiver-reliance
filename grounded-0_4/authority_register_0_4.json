@@ -1,6 +1,6 @@
 {
  "format_version": "B1-AUTHORITY-REGISTER-0.4",
- "law": "Every schema-required fact field of every operation appears here with its classification-authority status, verified BOTH directions by lint_contract.py: a field the predicates reference semantically must be listed 'semantic'; a field listed 'semantic' must be so referenced; fields without semantic reference must carry a disclosed status and rationale. New operations extend this register or fail CI.",
+ "law": "Every schema-required fact field of every operation appears here with its classification-authority status, verified BOTH directions by lint_contract.py. Against the frozen decision table (L1): a field the frozen predicates reference semantically must be listed 'semantic'; a field listed 'semantic' must be so referenced; 'presence_only' must be matched by a frozen presence predicate. Against the 0.4 closure table (L4): 'semantic_closure' must be matched by a value-comparing closure predicate and 'presence_only_closure' by a presence one, and a field either layer references may not be listed inert. Fields no layer checks must carry a disclosed inert status whose rationale states what a later generation would have to add. New operations extend this register or fail CI.",
  "grandfathered_wire_format_collisions": [
   {
    "format": "B1-SEMANTIC-DECISION-REQUEST-0.2",
@@ -64,13 +64,13 @@
     },
     {
      "field": "subject_id",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "presence_only_closure",
+     "rationale": "required-and-non-null is the tested property, enforced by a 0.4 closure predicate (tighten-only) rather than by the frozen decision table: OBL-12-C1 rejects a null contextual parameter"
     },
     {
      "field": "information_type",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "presence_only_closure",
+     "rationale": "required-and-non-null is the tested property, enforced by a 0.4 closure predicate (tighten-only) rather than by the frozen decision table: OBL-12-C1 rejects a null contextual parameter"
     },
     {
      "field": "transmission_principle",
@@ -79,13 +79,13 @@
     },
     {
      "field": "context_id",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "presence_only_closure",
+     "rationale": "required-and-non-null is the tested property, enforced by a 0.4 closure predicate (tighten-only) rather than by the frozen decision table: OBL-12-C1 rejects a null contextual parameter"
     },
     {
      "field": "purpose_id",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "presence_only_closure",
+     "rationale": "required-and-non-null is the tested property, enforced by a 0.4 closure predicate (tighten-only) rather than by the frozen decision table: OBL-12-C1 rejects a null contextual parameter"
     },
     {
      "field": "declared_recipient_id",
@@ -115,8 +115,8 @@
    "fields": [
     {
      "field": "node_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-14-C1 rejects an edge endpoint absent from the declared node set and OBL-14-C2 rejects a repeated node identifier"
     },
     {
      "field": "parent_edges",
@@ -479,8 +479,8 @@
     },
     {
      "field": "assumption_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-08-C1 rejects a repeated assumption identifier"
     },
     {
      "field": "policy_version_sha256",
@@ -501,37 +501,37 @@
     {
      "field": "intended_use_id",
      "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "rationale": "no counterpart fact exists on this surface to compare the intended use against (the schema carries no actual-use field and no use vocabulary), so no tighten-only closure can give it authority; maturing it requires a 0.5 fact profile"
     },
     {
      "field": "support_record_sha256",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C1 rejects two of the three record sources naming one record"
     },
     {
      "field": "provenance_record_sha256",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C1 rejects two of the three record sources naming one record"
     },
     {
      "field": "authority_record_sha256",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C1 rejects two of the three record sources naming one record"
     },
     {
      "field": "obligation_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C3 rejects a repeated identifier"
     },
     {
      "field": "assumption_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C3 rejects a repeated identifier"
     },
     {
      "field": "missing_evidence_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-16-C2 rejects a handoff whose caller declares evidence missing"
     },
     {
      "field": "decision_owner_id",
@@ -608,28 +608,28 @@
    "fields": [
     {
      "field": "retrieved_content_sha256s",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-22-C2 rejects a repeated digest. The check is structural: it does not verify that a digest binds bytes the validator evaluated (ERRATA E3)"
     },
     {
      "field": "tool_output_sha256s",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-22-C2 rejects a repeated digest. The check is structural: it does not verify that a digest binds bytes the validator evaluated (ERRATA E3)"
     },
     {
      "field": "metadata_sha256s",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-22-C2 rejects a repeated digest. The check is structural: it does not verify that a digest binds bytes the validator evaluated (ERRATA E3)"
     },
     {
      "field": "binding_sha256s",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-22-C1 rejects one object declared both an authenticated binding and self-asserted trust, and OBL-22-C2 rejects a repeated digest"
     },
     {
      "field": "self_asserted_trust_sha256s",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-22-C1 rejects one object declared both an authenticated binding and self-asserted trust, and OBL-22-C2 rejects a repeated digest"
     },
     {
      "field": "validation_role_id",
@@ -705,28 +705,28 @@
    "fields": [
     {
      "field": "intent_episode_id",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-30-C4 rejects a candidate the caller declares compatible whose own pool row contradicts this component of the declared intent tuple"
     },
     {
      "field": "intent_purpose_id",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-30-C5 rejects a candidate the caller declares compatible whose own pool row contradicts this component of the declared intent tuple"
     },
     {
      "field": "intent_scope_ref",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-30-C6 rejects a candidate the caller declares compatible whose own pool row contradicts this component of the declared intent tuple"
     },
     {
      "field": "intent_action_class",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-30-C7 rejects a candidate the caller declares compatible whose own pool row contradicts this component of the declared intent tuple"
     },
     {
      "field": "intent_version_sha256",
-     "status": "inert_disclosed",
-     "rationale": "disclosed non-authoritative surface (README: caller verdict / intent tuple is the authority boundary)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-30-C8 rejects a candidate the caller declares compatible whose own pool row contradicts this component of the declared intent tuple"
     },
     {
      "field": "candidate_pool",
@@ -913,8 +913,8 @@
     },
     {
      "field": "covered_modality_ids",
-     "status": "inert_registered_debt",
-     "rationale": "bound for future semantics; carries no classification authority today (registered by the 0.4 authority audit)"
+     "status": "semantic_closure",
+     "rationale": "value carries classification authority through a 0.4 closure predicate (tighten-only), not through the frozen decision table: OBL-24-C1 rejects a repeated modality identifier. No modality vocabulary exists on this surface, so coverage itself is not checked here"
     }
    ]
   },

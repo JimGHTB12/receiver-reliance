@@ -15,6 +15,7 @@ Run: py -3.12 -B grounded-0_4/test_public_surface.py
 from __future__ import annotations
 
 import copy
+import hashlib
 import io
 import json
 import pathlib
@@ -280,11 +281,18 @@ def main() -> int:
 
         substituted_policy = temporary_root / "closures_0_4.json"
         substituted_policy.write_bytes(b"{}")
+        # The expected digest is read from the live policy rather than
+        # transcribed: a literal here goes stale the first time the closure
+        # table changes, and a stale literal still passes this check while no
+        # longer asserting anything about the policy actually loaded.
+        live_policy_sha256 = hashlib.sha256(
+            (REPO / "grounded-0_4" / "closures_0_4.json").read_bytes()
+        ).hexdigest().upper()
         try:
             pkg_api._read_pinned_bytes(
                 substituted_policy,
                 2,
-                "EBA198726DE960E9F59ACE5A7E1BDB701BFBA5B1BD09BC59FF4540F2B14E8F9C",
+                live_policy_sha256,
                 "grounded closure policy",
             )
         except pkg_api.RuntimeIntegrityError:

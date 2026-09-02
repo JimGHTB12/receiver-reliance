@@ -15,12 +15,27 @@ from typing import Any
 HERE = pathlib.Path(__file__).resolve().parent
 AUTHORITY_REGISTER_PATH = HERE / "authority_register_0_4.json"
 AUTHORITY_REGISTER_FORMAT = "B1-AUTHORITY-REGISTER-0.4"
-AUTHORITY_REGISTER_BYTES = 35399
+AUTHORITY_REGISTER_BYTES = 38577
 AUTHORITY_REGISTER_SHA256 = (
-    "C3414FC751C3B5ECA43A4932C694641D801A21F2CF53C42BE3A8C87C234CF499"
+    "5700FC25BD7875DE66A44648983092182ADC2168529DD4C9ADF5334A625A3B74"
 )
+# `semantic` and `presence_only` name authority held by the FROZEN decision
+# table; `semantic_closure` and `presence_only_closure` name authority held by
+# a 0.4 closure predicate, which is tighten-only and therefore a strictly
+# weaker claim. They are distinct status strings rather than a widening of
+# `semantic` so that a consumer pinned to the published meaning of `semantic`
+# sees an unknown status and looks, instead of silently inheriting a different
+# guarantee. An older pinned copy of this module rejects the newer register
+# outright, which is the intended failure direction.
 AUTHORITY_STATUSES = frozenset(
-    {"semantic", "presence_only", "inert_disclosed", "inert_registered_debt"}
+    {
+        "semantic",
+        "semantic_closure",
+        "presence_only",
+        "presence_only_closure",
+        "inert_disclosed",
+        "inert_registered_debt",
+    }
 )
 _MAX_REGISTER_BYTES = 1024 * 1024
 _MAX_REGISTER_NESTING = 64
